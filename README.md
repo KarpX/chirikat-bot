@@ -1,4 +1,4 @@
-# 💘 Chirikat Bot — Telegram бот для знакомств
+# 💘 Chirikat' Bot — Telegram бот для знакомств
 
 ## [![Start Bot](https://img.shields.io/badge/Telegram-Запустить%20бота-green?logo=telegram)](https://t.me/@ChirikatBot)
 
