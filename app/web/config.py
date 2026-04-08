@@ -25,7 +25,7 @@ def load_config() -> Config:
     bot_config = BotConfig(token=os.getenv("BOT_TOKEN"))
     database_config = DatabaseConfig(
         host=os.getenv("DB_HOST"),
-        port=int(os.getenv("DB_PORT")),
+        port=int(os.getenv("DB_PORT_EXTERNAL")),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         db=os.getenv("DB_NAME")
