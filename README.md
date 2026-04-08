@@ -1,6 +1,6 @@
 # 💘 Chirikat' Bot — Telegram бот для знакомств
 
-## [![Start Bot](https://img.shields.io/badge/Telegram-Запустить%20бота-green?logo=telegram)](https://t.me/@ChirikatBot)
+## [![Start Bot](https://img.shields.io/badge/Telegram-Запустить%20бота-green?logo=telegram)](https://t.me/ChirikatBot)
 
 ---
 
@@ -81,9 +81,9 @@ python main.py
 
 ## 👤 Авторы
 
-- KarpX – разработчик: [![Telegram](https://img.shields.io/badge/Contact-KarpX-blue?logo=telegram)](https://t.me/@KarpXer)
+- KarpX – разработчик: [![Telegram](https://img.shields.io/badge/Contact-KarpX-blue?logo=telegram)](https://t.me/KarpXer)
 
-- vladusecho – создатель идеи: [![Telegram](https://img.shields.io/badge/Contact-vladusecho-blue?logo=telegram)](https://t.me/@cklsyawxgi)
+- vladusecho – создатель идеи: [![Telegram](https://img.shields.io/badge/Contact-vladusecho-blue?logo=telegram)](https://t.me/cklsyawxgi)
 
 ---
 
