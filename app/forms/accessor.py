@@ -53,7 +53,7 @@ class FormAccessor:
                 select(FormModel).where(FormModel.user_id == user_id)
             )
             form = result.scalar_one_or_none()
-            
+
             if not form:
                 return False
 
@@ -89,23 +89,6 @@ class FormImageAccessor:
     async def update_form_image(self, form_id: int, file_id: str):
         await self.delete_images_by_form_id(form_id)
         return await self.create_form_image(form_id, file_id)
-    
-class CityAccessor:
-    @property
-    def _session(self):
-        return database.get_session()
-    
-    async def get_city_by_id(self, city_id: int):
-        async with self._session as session:
-            city = await session.execute(select(CityModel).where(CityModel.id == city_id))
-            return city.scalar_one_or_none()
-        
-    async def get_city_by_name(self, city_name: str):
-        async with self._session as session:
-            city = await session.execute(select(CityModel).where(CityModel.name == city_name))
-            return city.scalar_one_or_none()
-
 
 formAccessor = FormAccessor()
 formImageAccessor = FormImageAccessor()
-cityAccessor = CityAccessor()
