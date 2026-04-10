@@ -11,7 +11,7 @@ class Database:
 
     async def connect(self, *args, **kwargs):
         DATABASE_URL = f"postgresql+asyncpg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT_EXTERNAL')}/{os.getenv('DB_NAME')}"
-        self.engine = create_async_engine(DATABASE_URL, echo=True)
+        self.engine = create_async_engine(DATABASE_URL, echo=False)
         self.sessionmaker = async_sessionmaker(self.engine, expire_on_commit=False)
 
     def get_session(self) -> AsyncSession:

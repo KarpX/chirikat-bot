@@ -9,7 +9,7 @@ from alembic import context
 
 from app.store.database.sql_alchemy_base import BaseModel
 from app.user.models import UserModel
-from app.forms.models import FormModel, FormImageModel, FormLikeModel, MatchModel, CityModel
+from app.forms.models import FormModel, FormImageModel, FormLikeModel, MatchModel
 
 config = context.config
 

@@ -1,19 +1,25 @@
+import random
+
 from aiogram.fsm.context import FSMContext
 
 from aiogram import Router
 from aiogram.filters import CommandStart
-from sqlalchemy import select
 
+from app.store.bot.builders import send_form_message
 from app.store.bot.handlers.form import FormState
-from app.store.database.database import database
 from app.user.accessor import userAccessor
-from app.user.models import UserModel
+from app.forms.accessor import formAccessor
 
 router = Router()
 
 @router.message(CommandStart())
 async def start_handler(message, state: FSMContext):
-    await userAccessor.create_or_get_user(message.from_user.id, message.from_user.username)
+    user = await userAccessor.create_or_get_user(message.from_user.id, message.from_user.username)
+    form = await formAccessor.get_form_by_user_id(user.id)
+    if form:
+        await message.answer(f"Чирик, @{user.username}! С возвращением в гнездо\n\nПока ты отсутствовал, мы съели все крошки\nМожет поспрашивать у остальных – может что осталось?")
+        await send_form_message(message, form)
+        return
 
     await message.answer("Чирик и добро пожаловать!" \
     "\nДля начала создадим анкету...")
