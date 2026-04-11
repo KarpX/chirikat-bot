@@ -7,7 +7,10 @@ class BotButtons(Enum):
     SEARCH = "Поиск"
     SYMPATHIES = "Симпатии"
     EDIT_FORM = "Изменить анкету"
-    DELETE_FORM = "Улететь из гнезда"
+    DISABLE_FORM = "Улететь из гнезда"
+    ENABLE_FORM = "Подлететь к гнезду"
+
+    SET_CURR = "Оставить прежним"
 
 
 def build_inline_keyboard(list_of_buttons, adjust: list[int] = None):
@@ -48,7 +51,12 @@ def remove_reply_keyboard():
 
 
 def build_form_text(form):
-    return f"<b>{form.name}</b> – {form.gender.lower()} {form.age} {f', {form.city}' if form.city is not None else ''}\n\n{form.description}"
+    name = form.name
+    gender = form.gender.lower()
+    age = form.age
+    city = f', {form.city}' if form.city is not None else ''
+    description = "" if form.description is None else form.description
+    return f"<b>{name}</b> – {gender} {age} {city}\n\n{description}"
 
 async def send_form_message(message, form):
     if not form.images:
@@ -64,6 +72,13 @@ async def send_form_message(message, form):
 
 
     await message.answer("Вот твоя анкета:", reply_markup=build_reply_keyboard(
-        [{"text": BotButtons.SEARCH.value},{"text": BotButtons.SYMPATHIES.value},{"text": BotButtons.EDIT_FORM.value}, {"text": BotButtons.DELETE_FORM.value}],
+        build_main_keyboard(),
         adjust=[2, 2],))
     return await message.answer_media_group(media=media[:3])
+
+def build_main_keyboard():
+    return [{"text": BotButtons.SEARCH.value},{"text": BotButtons.SYMPATHIES.value},{"text": BotButtons.EDIT_FORM.value}, {"text": BotButtons.DISABLE_FORM.value}]
+
+def build_edit_keyboard():
+    return [{"text": BotButtons.SET_CURR.value}]
+

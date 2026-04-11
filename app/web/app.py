@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
@@ -12,6 +14,16 @@ dp = Dispatcher()
 
 async def main() -> None:
     config = load_config()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout) # Дублировать логи в консоль
+        ]
+    )
+    logger = logging.getLogger(__name__)
+    logger.info("Бот запущен!")
+
     bot = Bot(token=config.bot.token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     await database.connect()
     setup_routers(dp)

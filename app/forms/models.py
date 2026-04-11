@@ -1,5 +1,5 @@
 import typing
-from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Integer, String, Text, DECIMAL, func
+from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Integer, String, Text, DECIMAL, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.store.database.sql_alchemy_base import BaseModel
@@ -20,6 +20,7 @@ class FormModel(BaseModel):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     latitude: Mapped[float] = mapped_column(DECIMAL(9, 6), nullable=True)
     longitude: Mapped[float] = mapped_column(DECIMAL(9, 6), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="forms")
     images: Mapped[list["FormImageModel"]] = relationship("FormImageModel", back_populates="form", lazy="selectin")

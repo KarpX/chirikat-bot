@@ -17,7 +17,10 @@ async def start_handler(message, state: FSMContext):
     user = await userAccessor.create_or_get_user(message.from_user.id, message.from_user.username)
     form = await formAccessor.get_form_by_user_id(user.id)
     if form:
-        await message.answer(f"Чирик, @{user.username}! С возвращением в гнездо\n\nПока ты отсутствовал, мы съели все крошки\nМожет поспрашивать у остальных – может что осталось?")
+        if not form.enabled:
+            await formAccessor.update_form(message.from_user.id, **{"enabled" : True})
+
+        await message.answer(f"Чирик, @{user.username}! С возвращением в гнездо\n\nПока ты отсутствовал, мы съели все крошки\nМожешь поспрашивать у остальных – может что осталось?")
         await send_form_message(message, form)
         return
 
