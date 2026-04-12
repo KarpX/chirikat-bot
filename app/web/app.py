@@ -8,9 +8,8 @@ from aiogram.client.default import DefaultBotProperties
 
 from app.store.bot.handlers import setup_routers
 from app.store.database.database import database
+from app.store.storage import SQLAlchemyStorage
 from app.web.config import load_config
-
-dp = Dispatcher()
 
 async def main() -> None:
     config = load_config()
@@ -23,6 +22,9 @@ async def main() -> None:
     )
     logger = logging.getLogger(__name__)
     logger.info("Бот запущен!")
+
+    storage = SQLAlchemyStorage(database)
+    dp = Dispatcher(storage=storage)
 
     bot = Bot(token=config.bot.token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     await database.connect()

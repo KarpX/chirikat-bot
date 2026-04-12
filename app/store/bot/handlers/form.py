@@ -301,7 +301,7 @@ async def process_images_done(message: Message, state: FSMContext):
         is_editing = data.get("is_editing")
         keyboard = [{"text" : "Оставить поле пустым"}]
         if is_editing:
-            keyboard += [build_edit_keyboard()]
+            keyboard += build_edit_keyboard()
         await message.answer("Отлично выглядишь! \n\nА теперь начирикай немного о себе", 
                              reply_markup=build_reply_keyboard(keyboard))
 
