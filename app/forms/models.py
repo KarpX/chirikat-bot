@@ -1,7 +1,8 @@
 import typing
-from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Integer, String, Text, func
+from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Integer, String, Text, DECIMAL, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.store.bot.builders import InlineButtons
 from app.store.database.sql_alchemy_base import BaseModel
 
 if typing.TYPE_CHECKING:
@@ -15,17 +16,25 @@ class FormModel(BaseModel):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
-    city: Mapped[int] = mapped_column(Integer, ForeignKey("cities.id"), nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=True)
     gender: Mapped[str] = mapped_column(String(20), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
+    latitude: Mapped[float] = mapped_column(DECIMAL(9, 6), nullable=True)
+    longitude: Mapped[float] = mapped_column(DECIMAL(9, 6), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="forms")
-    images: Mapped[list["FormImageModel"]] = relationship("FormImageModel", back_populates="form")
+    images: Mapped[list["FormImageModel"]] = relationship("FormImageModel", back_populates="form", lazy="selectin")
     liked_form: Mapped[list["FormLikeModel"]] = relationship("FormLikeModel", foreign_keys="[FormLikeModel.liked_form_id]", back_populates="liked_form")
     like_from: Mapped[list["FormLikeModel"]] = relationship("FormLikeModel", foreign_keys="[FormLikeModel.like_from]", back_populates="like_from_form")
-    city_rel: Mapped["CityModel"] = relationship("CityModel", back_populates="forms")
     matches_as_form1: Mapped[list["MatchModel"]] = relationship("MatchModel", foreign_keys="[MatchModel.form1_id]", back_populates="form1")
     matches_as_form2: Mapped[list["MatchModel"]] = relationship("MatchModel", foreign_keys="[MatchModel.form2_id]", back_populates="form2")
+    search_settings: Mapped["SearchSettingsModel"] = relationship(
+        "SearchSettingsModel", 
+        back_populates="form",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
 class FormImageModel(BaseModel):
     __tablename__ = "form_media"
@@ -59,10 +68,12 @@ class MatchModel(BaseModel):
     form1: Mapped["FormModel"] = relationship("FormModel", foreign_keys=[form1_id], back_populates="matches_as_form1")
     form2: Mapped["FormModel"] = relationship("FormModel", foreign_keys=[form2_id], back_populates="matches_as_form2")
 
-class CityModel(BaseModel):
-    __tablename__ = "cities"
+class SearchSettingsModel(BaseModel):
+    __tablename__ = "search_settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    form_id: Mapped[int] = mapped_column(Integer, ForeignKey("forms.id"), unique=True)
+    gender_search: Mapped[str] = mapped_column(String(20), nullable=False, default=InlineButtons.NO_GENDER_SEARCH.text)
+    geo_search: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    forms: Mapped[list["FormModel"]] = relationship("FormModel", back_populates="city_rel")
+    form: Mapped["FormModel"] = relationship("FormModel", back_populates="search_settings", uselist=False)
