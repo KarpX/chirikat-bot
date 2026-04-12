@@ -40,7 +40,6 @@ router = Router()
 
 geolocator = Nominatim(user_agent="my_dating_bot")
 
-
 @router.message(FormState.city, F.location)
 async def handle_location(message: Message, state: FSMContext):
     lat = message.location.latitude
@@ -245,12 +244,16 @@ async def form_handler(message: Message, state: FSMContext):
             "age": data.get('age', existing_form.age),
             "city": data.get('city'),
             "gender": data.get('gender', existing_form.gender),
-            "description": destription
+            "description": destription,
+            "geo_search": False
         }
 
         if 'latitude' in data:
             update_fields["latitude"] = data.get('latitude')
-            update_fields["longitude"] = data.get('longitude')
+            update_fields["longitude"] = data.get('longitude') 
+        
+        if data.get('city') is not None:
+            update_fields["geo_search"] = True
 
         logger.info(f"update_fields: {update_fields}")
 
@@ -275,7 +278,6 @@ async def form_handler(message: Message, state: FSMContext):
             await formImageAccessor.create_form_image(form_id=new_form.id, file_id=file_id)
 
     full_form = await formAccessor.get_form_by_user_id(user_id)
-    await message.answer("Обновление завершено!")
     await send_form_message(message, full_form)
     await state.clear()
 

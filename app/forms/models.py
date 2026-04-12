@@ -2,6 +2,7 @@ import typing
 from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Integer, String, Text, DECIMAL, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.store.bot.builders import InlineButtons
 from app.store.database.sql_alchemy_base import BaseModel
 
 if typing.TYPE_CHECKING:
@@ -28,6 +29,12 @@ class FormModel(BaseModel):
     like_from: Mapped[list["FormLikeModel"]] = relationship("FormLikeModel", foreign_keys="[FormLikeModel.like_from]", back_populates="like_from_form")
     matches_as_form1: Mapped[list["MatchModel"]] = relationship("MatchModel", foreign_keys="[MatchModel.form1_id]", back_populates="form1")
     matches_as_form2: Mapped[list["MatchModel"]] = relationship("MatchModel", foreign_keys="[MatchModel.form2_id]", back_populates="form2")
+    search_settings: Mapped["SearchSettingsModel"] = relationship(
+        "SearchSettingsModel", 
+        back_populates="form",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
 class FormImageModel(BaseModel):
     __tablename__ = "form_media"
@@ -60,3 +67,13 @@ class MatchModel(BaseModel):
 
     form1: Mapped["FormModel"] = relationship("FormModel", foreign_keys=[form1_id], back_populates="matches_as_form1")
     form2: Mapped["FormModel"] = relationship("FormModel", foreign_keys=[form2_id], back_populates="matches_as_form2")
+
+class SearchSettingsModel(BaseModel):
+    __tablename__ = "search_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    form_id: Mapped[int] = mapped_column(Integer, ForeignKey("forms.id"), unique=True)
+    gender_search: Mapped[str] = mapped_column(String(20), nullable=False, default=InlineButtons.NO_GENDER_SEARCH.text)
+    geo_search: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    form: Mapped["FormModel"] = relationship("FormModel", back_populates="search_settings", uselist=False)
