@@ -58,6 +58,17 @@ class InlineButtons(Enum):
             InlineButtons.DONE: "cb_done"
         }
         return data[self]
+    
+    @property
+    def text_data(self):
+        data = {
+            InlineButtons.MALE_GENDER: "Парень",
+            InlineButtons.FEMALE_GENDER: "Девушка",
+            InlineButtons.ANOTHER_GENDER: "Другое",
+            InlineButtons.NO_GENDER_SEARCH: None,
+        }
+
+        return data[self]
 
 
 

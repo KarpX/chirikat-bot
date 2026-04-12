@@ -67,7 +67,7 @@ async def show_next_form(message: Message, state: FSMContext):
         if not my_form: return
 
         gender_search = my_form.search_settings.gender_search
-        target = gender_search if gender_search != InlineButtons.NO_GENDER_SEARCH.text else None
+        target = gender_search
 
         lat, lon = (my_form.latitude, my_form.longitude) if my_form.search_settings.geo_search else (None, None)
 
@@ -163,13 +163,11 @@ async def gender_search_callback(callback: CallbackQuery, state: FSMContext):
     for btn in [InlineButtons.FEMALE_GENDER, InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER]:
         if btn.callback_data == callback.data:
             text = btn.text
+            text_data = btn.text_data
 
     await callback.answer(f"Поиск: {text}")
 
-    keyboard = [{"text": btn.text, "callback_data" : btn.callback_data} for btn in (InlineButtons.FEMALE_GENDER, 
-    InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER, InlineButtons.NO_GENDER_SEARCH, InlineButtons.BACK)]
-
-    await state.update_data(gender_search=text)
+    await state.update_data(gender_search=text_data)
     await show_edit_keyboard(callback, state)
     
 @router.callback_query(SearchState.settings, F.data == InlineButtons.LOCATION_SEARCH.callback_data)
