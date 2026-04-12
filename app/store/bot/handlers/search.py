@@ -1,4 +1,5 @@
 import logging
+import time
 
 from aiogram import F, Router
 from aiogram.fsm.state import State, StatesGroup
@@ -46,20 +47,31 @@ async def back_button_search_handler(message: Message, state: FSMContext):
 @router.message(SearchState.viewing)
 async def show_next_form(message: Message, state: FSMContext):
     data = await state.get_data()
+
+    last_view_time = data.get("last_view_time")
+    current_time = time.time()
+    two_hours_in_seconds = 2
+
+    if last_view_time and (current_time - last_view_time > two_hours_in_seconds):
+        await state.update_data(seen_ids=[], last_view_time=current_time)
+        seen_ids = []
+        logger.info(f"Список seen_ids для пользователя {message.from_user.id} обнулен по истечении 2 часов.")
+    else:
+        seen_ids = data.get("seen_ids", [])
+
     forms = data.get("forms", [])
     index = data.get("current_index", 0)
-    seen_ids = data.get("seen_ids", [])
 
     if index >= len(forms):
         my_form = await formAccessor.get_form_by_user_id(message.from_user.id)
+        if not my_form: return
+
         gender_search = my_form.search_settings.gender_search
         target = gender_search if gender_search != InlineButtons.NO_GENDER_SEARCH.text else None
 
-        lat = None
-        lon = None
-        if my_form.search_settings.geo_search:
-            lat = my_form.latitude
-            lon = my_form.longitude
+        lat, lon = (my_form.latitude, my_form.longitude) if my_form.search_settings.geo_search else (None, None)
+
+        logger.info(f"seen_ids: {seen_ids}")
 
         new_forms = await formAccessor.get_search_forms(user_id=message.from_user.id,
         target_gender=target, lat=lat, lon=lon, exclude_ids=seen_ids)
@@ -69,14 +81,17 @@ async def show_next_form(message: Message, state: FSMContext):
             await back_button_search_handler(message, state)
             return
         
-        forms = [f.user_id for f in new_forms]
+        forms = [{"id": f.user_id, "dist": f.distance_km} for f in new_forms]
         index = 0
         await state.update_data(forms=forms, current_index=index)
 
-    target_form = await formAccessor.get_form_by_user_id(forms[index])
+    current_item = forms[index]
+    target_form = await formAccessor.get_form_by_user_id(current_item["id"])
+
+    target_form.distance_km = current_item["dist"]
 
     seen_ids.append(target_form.id)
-    await state.update_data(seen_ids=seen_ids)
+    await state.update_data(seen_ids=seen_ids, last_view_time=time.time())
 
     await send_search_form_message(message=message, form=target_form)
 

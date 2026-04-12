@@ -1,8 +1,16 @@
+from decimal import Decimal
 import json
+from typing import Any, Dict
 
 from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
 
 from app.user.models import FSMStorageModel
+
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(CustomEncoder, self).default(obj)
 
 class SQLAlchemyStorage(BaseStorage):
     def __init__(self, db):
@@ -26,10 +34,11 @@ class SQLAlchemyStorage(BaseStorage):
             res = await session.get(FSMStorageModel, s_key)
             return res.state if res else None
 
-    async def set_data(self, key: StorageKey, data: dict):
+    async def set_data(self, key: StorageKey, data: Dict[str, Any]):
         async with self.db.get_session() as session:
             s_key = f"{key.bot_id}:{key.chat_id}:{key.user_id}"
-            data_str = json.dumps(data)
+            
+            data_str = json.dumps(data, ensure_ascii=False, cls=CustomEncoder)
             
             exists = await session.get(FSMStorageModel, s_key)
             if exists:

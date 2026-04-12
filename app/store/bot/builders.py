@@ -1,7 +1,10 @@
 from enum import Enum
+import logging
 
 from aiogram.types import InputMediaPhoto, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+
+logger = logging.getLogger(__name__)
 
 class BotButtons(Enum):
     SEARCH = "Поиск"
@@ -101,7 +104,16 @@ def build_form_text(form):
     age = form.age
     city = f', {form.city}' if form.city is not None else ''
     description = "" if form.description is None else form.description
-    return f"<b>{name}</b> – {gender} {age} {city}\n\n{description}"
+
+    dist_str = ""
+    if hasattr(form, "distance_km") and form.distance_km is not None:
+        logger.info(f"distance_km: {form.distance_km}")
+        if form.distance_km < 1:
+            dist_str = f"📍 Менее 1 км"
+        else:
+            dist_str = f"📍 В {form.distance_km} км от тебя"
+
+    return f"<b>{name}</b> – {gender} {age} {city}\n{dist_str}\n\n{description}"
 
 async def send_form_message(message, form):
     if not form.images:

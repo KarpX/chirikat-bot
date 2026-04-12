@@ -138,19 +138,8 @@ async def form_handler(message, state: FSMContext):
     if is_editing:
         keyboard += build_edit_keyboard()
 
-    await message.answer("Из какого ты гнёздышка?", reply_markup=build_reply_keyboard_with_location(keyboard, adjust=[2, 1], one_time_keyboard=True))
+    await message.answer("Откуда ты?", reply_markup=build_reply_keyboard_with_location(keyboard, adjust=[2, 1], one_time_keyboard=True))
 
-
-# @router.message(FormState.city)
-# async def form_handler(message, state: FSMContext):    
-#     await state.update_data(city=message.text)
-
-#     await state.set_state(FormState.gender)
-#     await message.answer("Какого ты пола?", reply_markup=build_reply_keyboard(
-#         [{"text": Gender.MALE.value}, {"text": Gender.FEMALE.value}, {"text": Gender.OTHER.value}], 
-#         adjust=[3], 
-#         one_time_keyboard=True
-#         ))
 
 @router.message(FormState.gender)
 async def form_handler(message, state: FSMContext):

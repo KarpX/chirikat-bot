@@ -1,4 +1,4 @@
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, literal, not_, select
 from sqlalchemy.orm import selectinload
 
 from app.forms.models import FormImageModel, FormModel, SearchSettingsModel
@@ -77,17 +77,16 @@ class FormAccessor:
     async def get_search_forms(self, user_id: int, target_gender: str | None = None, lat: float = None, lon: float = None, 
                                radius_km: int = 100, exclude_ids: list[int] = None):
         async with self._session as session:
-            query = select(FormModel).where(
-                    FormModel.user_id != user_id, FormModel.enabled == True
-                ).options(selectinload(FormModel.images))
+        # Базовые условия
+            filters = [FormModel.user_id != user_id, FormModel.enabled == True]
+            if target_gender:
+                filters.append(FormModel.gender == target_gender)
+            if exclude_ids:
+                filters.append(not_(FormModel.id.in_(exclude_ids)))
 
-            if target_gender is not None:
-                query = query.where(FormModel.gender == target_gender)
-
-            if exclude_ids is not None:
-                query = query.where(FormModel.id.not_in(exclude_ids))
-
-            if lat and lon:
+            distance_expr = None
+            if lat is not None and lon is not None:
+                # Формула гаверсинусов
                 distance_expr = (
                     6371 * func.acos(
                         func.cos(func.radians(lat)) * 
@@ -97,13 +96,24 @@ class FormAccessor:
                         func.sin(func.radians(FormModel.latitude))
                     )
                 )
-                query = query.where(distance_expr <= radius_km).order_by(distance_expr)
+                # Добавляем фильтр по радиусу и сортировку по близости
+                query = select(FormModel, distance_expr.label("dist")).where(*filters, distance_expr <= radius_km).order_by(distance_expr)
             else:
-                query = query.order_by(func.random())
+                # Если координат нет, возвращаем None в качестве расстояния
+                query = select(FormModel, literal(None).label("dist")).where(*filters).order_by(func.random())
 
             result = await session.execute(query.limit(10))
-            return result.scalars().all()
-        
+            
+            # Превращаем результат (кортежи) обратно в объекты анкет с атрибутом distance
+            forms_with_dist = []
+            for row in result.all():
+                form = row[0]
+                dist = row[1]
+                # Динамически добавляем поле в объект (оно не сохраняется в БД, только в памяти)
+                form.distance_km = round(float(dist), 1) if dist is not None else None
+                forms_with_dist.append(form)
+                
+            return forms_with_dist
 class FormImageAccessor:
     @property
     def _session(self):
