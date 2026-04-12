@@ -204,7 +204,8 @@ async def form_handler(message, state: FSMContext):
 async def form_handler(message, state: FSMContext):
     data = await state.get_data()
     
-    if data.get("is_editing"):
+    if data.get("is_editing") and data.get("edit_type") == "image":
+        logger.info("here")
         full_form = await formAccessor.get_form_by_user_id(message.from_user.id)
         await send_form_message(message, full_form)
         await state.clear()
@@ -251,9 +252,11 @@ async def form_handler(message: Message, state: FSMContext):
             update_fields["latitude"] = data.get('latitude')
             update_fields["longitude"] = data.get('longitude')
 
+        logger.info(f"update_fields: {update_fields}")
+
         new_form = await formAccessor.update_form(user_id=user_id, **update_fields)
 
-        if "image" in data:
+        if "image" in data and data['image'] is not None:
             await formImageAccessor.delete_images_by_form_id(new_form.id)
             for file_id in data['image']:
                 await formImageAccessor.create_form_image(form_id=new_form.id, file_id=file_id)
@@ -293,8 +296,12 @@ async def process_images_done(message: Message, state: FSMContext):
         await state.clear()
     else:
         await state.set_state(FormState.description)
+        is_editing = data.get("is_editing")
+        keyboard = [{"text" : "Оставить поле пустым"}]
+        if is_editing:
+            keyboard += [build_edit_keyboard()]
         await message.answer("Отлично выглядишь! \n\nА теперь начирикай немного о себе", 
-                             reply_markup=build_reply_keyboard([{"text" : "Оставить поле пустым"}]))
+                             reply_markup=build_reply_keyboard(keyboard))
 
 
 @router.callback_query(F.data == "EditAll")
