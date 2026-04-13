@@ -48,7 +48,7 @@ async def handle_location(message: Message, state: FSMContext):
     try:
         location = geolocator.reverse(f"{lat}, {lon}", language="ru")
         address = location.raw.get('address', {})
-        city_name = address.get('city') or address.get('town') or address.get('village') or "Неизвестное гнёздышко"
+        city_name = address.get('city') or address.get('town') or address.get('village') or "Неизвестный город"
     except Exception:
         await message.answer(f"Попробуй ещё раз!")
         return
@@ -158,7 +158,7 @@ async def form_handler(message, state: FSMContext):
         keyboard += build_edit_keyboard()
         kb = build_reply_keyboard(keyboard)
 
-    await message.answer("Покажи себя! \n\n<i>Оперение птичек может много о них рассказать</i>", reply_markup=kb, parse_mode="HTML")
+    await message.answer("Покажи себя! \n\n<i>Внешний может много о тебе рассказать</i>", reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(FormState.image, F.photo)
@@ -172,7 +172,7 @@ async def form_handler(message, state: FSMContext):
 
     if len(images) < 3:
         await message.answer(
-            f"Фото добавлено ({len(images)}/3). \n\nПоделишься ещё красотой оперения или хватит?",
+            f"Фото добавлено ({len(images)}/3). \n\nЭтого хватит?",
             reply_markup=build_reply_keyboard([{"text":"Хватит!"}])
         )
     else:
@@ -202,7 +202,7 @@ async def form_handler(message, state: FSMContext):
         
         await state.set_state(FormState.description)
         await message.answer(
-            "Теперь начирикай что-нибудь о себе", 
+            "Теперь расскажи что-нибудь о себе", 
             reply_markup=build_reply_keyboard([
                 {"text" : "Оставить поле пустым"},
                 {"text" : BotButtons.SET_CURR.value}
@@ -291,7 +291,7 @@ async def process_images_done(message: Message, state: FSMContext):
         keyboard = [{"text" : "Оставить поле пустым"}]
         if is_editing:
             keyboard += build_edit_keyboard()
-        await message.answer("Отлично выглядишь! \n\nА теперь начирикай немного о себе", 
+        await message.answer("Отлично выглядишь! \n\nА теперь расскажи немного о себе", 
                              reply_markup=build_reply_keyboard(keyboard))
 
 
@@ -317,7 +317,7 @@ async def edit_desc_handler(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(is_editing=True) 
     keyboard = build_edit_keyboard()
-    await callback.message.answer("Начирикай новое описание о себе", reply_markup=build_reply_keyboard(keyboard))
+    await callback.message.answer("Напиши новое описание о себе", reply_markup=build_reply_keyboard(keyboard))
     await callback.answer()
 
 
@@ -346,7 +346,7 @@ async def edit_form_handler(message):
 async def delete_form_handler(message: Message, state: FSMContext):
     await state.set_state(ProfileState.confirm_disable)
 
-    await message.answer("Ты точно хочешь покинуть гнездо?\n\n<i>Мы больше не будем предлагать тебя другим птичкам, но ты сможешь вернуться!</i>", reply_markup=build_reply_keyboard(
+    await message.answer("Ты точно хочешь отключить анкету?\n\n<i>Мы больше не будем предлагать тебя, но ты сможешь вернуться!</i>", reply_markup=build_reply_keyboard(
         [{"text" : "Нет, остаюсь!"}, {"text" : "Уверен"}]), parse_mode="HTML")
     
 @router.message(ProfileState.confirm_disable, F.text == "Нет, остаюсь!")
@@ -354,7 +354,7 @@ async def delete_form_handler(message: Message, state: FSMContext):
     await state.clear()
     keyboard = build_main_keyboard()
 
-    await message.answer("Мы рады, что ты остался с нами!", reply_markup=build_reply_keyboard(keyboard, adjust=[2,2]))
+    await message.answer("Мы рады, что ты с нами!", reply_markup=build_reply_keyboard(keyboard, adjust=[2,2]))
 
 @router.message(ProfileState.confirm_disable, F.text == "Уверен")
 async def delete_form_handler(message: Message, state: FSMContext):

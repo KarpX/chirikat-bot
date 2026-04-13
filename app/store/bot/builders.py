@@ -10,8 +10,8 @@ class BotButtons(Enum):
     SEARCH = "Поиск"
     SYMPATHIES = "Симпатии"
     EDIT_FORM = "Изменить анкету"
-    DISABLE_FORM = "Улететь из гнезда"
-    ENABLE_FORM = "Подлететь к гнезду"
+    DISABLE_FORM = "Отключить анкету"
+    ENABLE_FORM = "Включить анкету"
     SEARCH_SETTINGS = "Настроить поиск"
 
     SET_CURR = "Оставить прежним"
@@ -19,6 +19,15 @@ class BotButtons(Enum):
     LIKE = "❤️ Нравится"
     SKIP = "👎 Пропустить"
     BACK = "⛔️ Назад"
+
+class LikeButtons(Enum):
+    SEE_FORM = "👀 Посмотреть"
+    SNOOZE_FORM = "💤 Отложить"
+
+class SympathyButtons(Enum):
+    GOT_SYMPATHIES = "Полученные симпатии"
+    SEE_MATCHES = "Взаимности"
+    BACK = "Назад"
 
 class InlineButtons(Enum):
     BACK = {"text" : "Назад", "callback_data": "cb_back"}
@@ -120,30 +129,35 @@ def build_form_text(form):
     if hasattr(form, "distance_km") and form.distance_km is not None:
         logger.info(f"distance_km: {form.distance_km}")
         if form.distance_km < 1:
-            dist_str = f"📍 Менее 1 км"
+            dist_str = f"\n📍 Менее 1 км"
         else:
-            dist_str = f"📍 В {form.distance_km} км от тебя"
+            dist_str = f"\n📍 В {form.distance_km} км от тебя"
 
-    return f"<b>{name}</b> – {gender} {age} {city}\n{dist_str}\n\n{description}"
+    return f"<b>{name}</b> – {gender} {age} {city}{dist_str}\n\n{description}"
 
-async def send_form_message(message, form):
+async def send_form_message(message, form, username: str = None):
     if not form.images:
-        return await message.answer(build_form_text(form))
+        text = build_form_text(form)
+        return await message.answer(text, parse_mode="HTML")
     
     media = []
+    caption = build_form_text(form)
 
     for i, img in enumerate(form.images):
         if i == 0:
-            media.append(InputMediaPhoto(media=img.file_id, caption=build_form_text(form), parse_mode="HTML"))
+            media.append(InputMediaPhoto(media=img.file_id, caption=caption, parse_mode="HTML"))
         else:
             media.append(InputMediaPhoto(media=img.file_id))
-
-
-    await message.answer("Вот твоя анкета:", reply_markup=build_reply_keyboard(
-        build_main_keyboard(),
-        adjust=[2, 2],))
-    return await message.answer_media_group(media=media[:3])
-
+    
+    if username:
+        await message.answer_media_group(media=media[:3])
+        return await message.answer(f"🎉 <b>Это взаимно!</b>\n@{username} ждет твоего сообщения.", 
+                                    reply_markup=build_reply_keyboard(build_main_keyboard(), adjust=[2, 2]))
+    else:
+        await message.answer("Вот твоя анкета:", 
+                                    reply_markup=build_reply_keyboard(build_main_keyboard(), adjust=[2, 2]))
+        return await message.answer_media_group(media=media[:3])
+    
 async def send_search_form_message(message, form):
     if not form.images:
         return await message.answer(build_form_text(form))
@@ -157,10 +171,47 @@ async def send_search_form_message(message, form):
             media.append(InputMediaPhoto(media=img.file_id))
 
     keyboard = build_search_keyboard()
-    await message.answer("Нашли птичку:", reply_markup=build_reply_keyboard(
+    await message.answer("Нашли специально для тебя:", reply_markup=build_reply_keyboard(
         keyboard,
         adjust=[2, 2],))
     return await message.answer_media_group(media=media[:3])
+
+async def send_match_message(message, form, username):
+    if not form.images:
+        text = build_form_text(form)
+        return await message.answer(text, parse_mode="HTML")
+    
+    media = []
+    caption = build_form_text(form)
+    caption += f"\n\nАккаунт – @{username}"
+
+    for i, img in enumerate(form.images):
+        if i == 0:
+            media.append(InputMediaPhoto(media=img.file_id, caption=caption, parse_mode="HTML"))
+        else:
+            media.append(InputMediaPhoto(media=img.file_id))
+    
+    await message.answer_media_group(media=media[:3])
+
+async def send_got_sympathy_message(message, form):
+    if not form.images:
+        text = build_form_text(form)
+        return await message.answer(text, parse_mode="HTML")
+    
+    media = []
+    caption = build_form_text(form)
+
+    for i, img in enumerate(form.images):
+        if i == 0:
+            media.append(InputMediaPhoto(media=img.file_id, caption=caption, parse_mode="HTML"))
+        else:
+            media.append(InputMediaPhoto(media=img.file_id))
+    
+    keyboard = build_search_keyboard()
+    await message.answer("Твоя анкета понравилась:", reply_markup=build_reply_keyboard(
+        keyboard,
+        adjust=[2, 2],))
+    await message.answer_media_group(media=media[:3])
 
 def build_main_keyboard():
     return [{"text": BotButtons.SEARCH.value},{"text": BotButtons.SYMPATHIES.value},{"text": BotButtons.EDIT_FORM.value},{"text": BotButtons.SEARCH_SETTINGS.value}, {"text": BotButtons.DISABLE_FORM.value}]

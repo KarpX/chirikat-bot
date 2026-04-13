@@ -1,7 +1,7 @@
 from sqlalchemy import delete, func, literal, not_, select
 from sqlalchemy.orm import selectinload
 
-from app.forms.models import FormImageModel, FormModel, SearchSettingsModel
+from app.forms.models import FormImageModel, FormLikeModel, FormModel, MatchModel, SearchSettingsModel
 from app.store.database.database import database
 
 
@@ -77,16 +77,24 @@ class FormAccessor:
     async def get_search_forms(self, user_id: int, target_gender: str | None = None, lat: float = None, lon: float = None, 
                                radius_km: int = 100, exclude_ids: list[int] = None):
         async with self._session as session:
-        # Базовые условия
+            my_form = await self.get_form_by_user_id(user_id)
+
+            liked_ids_query = await session.execute(
+                select(FormLikeModel.liked_form_id)
+                .where(FormLikeModel.like_from == my_form.id)
+            )
+            liked_ids = liked_ids_query.scalars().all()
+
+            all_exclude = list(exclude_ids or []) + liked_ids
+
             filters = [FormModel.user_id != user_id, FormModel.enabled == True]
             if target_gender:
                 filters.append(FormModel.gender == target_gender)
-            if exclude_ids:
-                filters.append(not_(FormModel.id.in_(exclude_ids)))
+            if all_exclude:
+                filters.append(not_(FormModel.id.in_(all_exclude)))
 
             distance_expr = None
             if lat is not None and lon is not None:
-                # Формула гаверсинусов
                 distance_expr = (
                     6371 * func.acos(
                         func.cos(func.radians(lat)) * 
@@ -96,24 +104,95 @@ class FormAccessor:
                         func.sin(func.radians(FormModel.latitude))
                     )
                 )
-                # Добавляем фильтр по радиусу и сортировку по близости
                 query = select(FormModel, distance_expr.label("dist")).where(*filters, distance_expr <= radius_km).order_by(distance_expr)
             else:
-                # Если координат нет, возвращаем None в качестве расстояния
                 query = select(FormModel, literal(None).label("dist")).where(*filters).order_by(func.random())
 
             result = await session.execute(query.limit(10))
             
-            # Превращаем результат (кортежи) обратно в объекты анкет с атрибутом distance
             forms_with_dist = []
             for row in result.all():
                 form = row[0]
                 dist = row[1]
-                # Динамически добавляем поле в объект (оно не сохраняется в БД, только в памяти)
                 form.distance_km = round(float(dist), 1) if dist is not None else None
                 forms_with_dist.append(form)
                 
             return forms_with_dist
+        
+    async def add_like(self, from_user_id: int, to_form_id: int):
+        async with self._session as session:
+            from_form = await self.get_form_by_user_id(from_user_id)
+
+            existing = await session.execute(
+                select(FormLikeModel).where(
+                    FormLikeModel.liked_form_id == to_form_id,
+                    FormLikeModel.like_from == from_form.id
+                )
+            )
+            if existing.scalar_one_or_none():
+                return False, None
+            
+            new_like = FormLikeModel(like_from=from_form.id, liked_form_id=to_form_id)
+            session.add(new_like)
+
+            match_check = await session.execute(
+                select(FormLikeModel).where(
+                    FormLikeModel.like_from == to_form_id,
+                    FormLikeModel.liked_form_id == from_form.id
+                )
+            )
+            is_match = match_check.scalar_one_or_none() is not None
+
+            if is_match:
+                match = MatchModel(form1_id=from_form.id, form2_id=to_form_id)
+                session.add(match)
+            
+            await session.commit()
+            return True, is_match
+        
+    async def get_sympathy_forms(self, user_id: int):
+        async with self._session as session:
+            my_form = await self.get_form_by_user_id(user_id)
+            if not my_form:
+                return []
+
+            liked_by_query = select(FormLikeModel.like_from).where(
+                FormLikeModel.liked_form_id == my_form.id
+            )
+            
+            query = select(FormModel).where(
+                FormModel.id.in_(liked_by_query),
+                FormModel.enabled == True
+            ).options(selectinload(FormModel.images))
+            
+            result = await session.execute(query)
+            return result.scalars().all()
+    
+    async def get_matches(self, user_id: int):
+        async with self._session as session:
+            my_form = await self.get_form_by_user_id(user_id)
+            if not my_form:
+                return []
+
+            matches_query = select(MatchModel).where(
+                (MatchModel.form1_id == my_form.id) | (MatchModel.form2_id == my_form.id)
+            )
+
+            result = await session.execute(matches_query)
+            matches = result.scalars().all()
+
+            matched_forms = []
+            for match in matches:
+                other_form_id = match.form2_id if match.form1_id == my_form.id else match.form1_id
+                other_form_query = select(FormModel).where(FormModel.id == other_form_id).options(selectinload(FormModel.images))
+                other_result = await session.execute(other_form_query)
+                other_form = other_result.scalar_one_or_none()
+                if other_form and other_form.enabled:
+                    matched_forms.append(other_form)
+
+            return matched_forms
+        
+
 class FormImageAccessor:
     @property
     def _session(self):
@@ -142,6 +221,7 @@ class FormImageAccessor:
     async def update_form_image(self, form_id: int, file_id: str):
         await self.delete_images_by_form_id(form_id)
         return await self.create_form_image(form_id, file_id)
+    
 
 formAccessor = FormAccessor()
 formImageAccessor = FormImageAccessor()
