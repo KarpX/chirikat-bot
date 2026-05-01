@@ -1,6 +1,4 @@
 config.yaml
-docker-compose.yaml
-alembic.ini
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

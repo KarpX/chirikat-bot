@@ -137,7 +137,7 @@ async def show_next_form(message: Message, state: FSMContext):
         if not my_form: return
 
         gender_search = my_form.search_settings.gender_search
-        target = gender_search
+        target = gender_search if gender_search != InlineButtons.NO_GENDER_SEARCH.text_data else None
 
         lat, lon = (my_form.latitude, my_form.longitude) if my_form.search_settings.geo_search else (None, None)
 
@@ -230,7 +230,7 @@ async def gender_settings_callback(callback: CallbackQuery, state: FSMContext):
 async def gender_search_callback(callback: CallbackQuery, state: FSMContext):
     text = InlineButtons.NO_GENDER_SEARCH.text
 
-    for btn in [InlineButtons.FEMALE_GENDER, InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER]:
+    for btn in [InlineButtons.FEMALE_GENDER, InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER, InlineButtons.NO_GENDER_SEARCH]:
         if btn.callback_data == callback.data:
             text = btn.text
             text_data = btn.text_data

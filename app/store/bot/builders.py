@@ -74,7 +74,7 @@ class InlineButtons(Enum):
             InlineButtons.MALE_GENDER: "Парень",
             InlineButtons.FEMALE_GENDER: "Девушка",
             InlineButtons.ANOTHER_GENDER: "Другое",
-            InlineButtons.NO_GENDER_SEARCH: None,
+            InlineButtons.NO_GENDER_SEARCH: "Нет",
         }
 
         return data[self]

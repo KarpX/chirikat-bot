@@ -59,3 +59,13 @@ async def handle_see_matches(message: Message, state: FSMContext):
 
     await state.set_state(SympathyState.choose_button_sympathy)
     await handle_sympathies(message, state)
+
+@router.message(SympathyState.choose_button_sympathy, F.text == SympathyButtons.BACK.value)
+async def handle_back(message: Message, state: FSMContext):
+    form = await formAccessor.get_form_by_user_id(message.from_user.id)
+
+    if form:
+        await send_form_message(message, form)
+
+    await state.clear()
+    
