@@ -1,24 +1,40 @@
 import asyncio
+import sys
+import os
+from dotenv import load_dotenv
 from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+from app.store.database.sql_alchemy_base import BaseModel
+import app.forms.models
+import app.user.models
 
 from alembic import context
 
-from app.store.database.sql_alchemy_base import BaseModel
-from app.user.models import UserModel
-from app.forms.models import FormModel, FormImageModel, FormLikeModel, MatchModel
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, BASE_DIR)
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 config = context.config
 
+database_url = f"postgresql+asyncpg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT_EXTERNAL')}/{os.getenv('DB_NAME')}"
 
+config.set_main_option("sqlalchemy.url", database_url)
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+
 target_metadata = BaseModel.metadata
 
+# other values from the config, defined by the needs of env.py,
+# can be acquired:
+# my_important_option = config.get_main_option("my_important_option")
+# ... etc.
 
 
 def run_migrations_offline() -> None:

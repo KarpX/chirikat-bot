@@ -3,12 +3,12 @@ import time
 
 from aiogram import F, Router
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 from aiogram.fsm.context import FSMContext
 
 from app.forms.accessor import formAccessor
-from app.store.bot.builders import BotButtons, InlineButtons, build_inline_keyboard, build_reply_keyboard, send_form_message, send_search_form_message
-from app.store.bot.handlers.form import Gender
+from app.store.bot.builders import BotButtons, InlineButtons, LikeButtons, build_form_text, build_inline_keyboard, build_main_keyboard, build_reply_keyboard, send_form_message, send_search_form_message
+from app.user.accessor import userAccessor
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +21,83 @@ class SearchState(StatesGroup):
 
 @router.message(F.text == BotButtons.SEARCH.value)
 async def search_handler(message: Message, state: FSMContext):
-    await message.answer("Ищем для тебя самых лучших птичек!")
+    await message.answer("Ищем для тебя самых лучших!")
     await state.set_state(SearchState.viewing)
     await show_next_form(message, state)
 
 @router.message(SearchState.viewing, F.text == BotButtons.LIKE.value)
 async def searh_handler(message: Message, state: FSMContext):
-    await message.answer("Вам понравилась анкета!")
+    data = await state.get_data()
+    forms = data.get("forms", [])
+    index = data.get("current_index", 0)
+
+    if not forms or index >= len(forms):
+        return
+
+    target_form_id = forms[index]["id"]
+    
+    target_form = await formAccessor.get_form_by_user_id(target_form_id)
+    
+    success, is_match = await formAccessor.add_like(message.from_user.id, target_form.id)
+
+    if is_match:
+        target_user = await userAccessor.get_user(user_id=target_form_id)
+        my_form = await formAccessor.get_form_by_user_id(message.from_user.id)
+        my_user = await userAccessor.get_user(user_id=message.from_user.id)
+
+        await send_form_message(message, target_form, username=target_user.username)
+
+        try:
+            match_caption = build_form_text(my_form)
+            
+            if my_form.images:
+                media = [InputMediaPhoto(media=img.file_id, caption=match_caption if i == 0 else "", parse_mode="HTML") 
+                         for i, img in enumerate(my_form.images[:3])]
+                await message.bot.send_media_group(chat_id=target_form_id, media=media)
+
+                await message.bot.send_message(chat_id=target_form_id, text=f"🎉 <b>Это взаимно!</b>\n@{my_user.username} ждет твоего сообщения.", 
+                                    reply_markup=build_reply_keyboard(build_main_keyboard(), adjust=[2, 2]))
+            else:
+                await message.bot.send_message(chat_id=target_form_id, text=match_caption, parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Error notifying target: {e}")
+
+    else:
+        try:
+            await message.bot.send_message(
+                chat_id=target_form_id,
+                text="❤️ Твоя анкета кому-то понравилась!",
+                reply_markup=build_reply_keyboard([{"text": LikeButtons.SEE_FORM.value}, {"text" : LikeButtons.SNOOZE_FORM.value}], adjust=[2])
+            )
+        except Exception:
+            pass
+
+    await state.update_data(current_index=index + 1)
+    await show_next_form(message, state)
+
+@router.message(F.text == LikeButtons.SEE_FORM.value)
+async def see_form_handler(message: Message, state: FSMContext):
+    incoming_forms = await formAccessor.get_sympathy_forms(message.from_user.id)
+    
+    if not incoming_forms:
+        await message.answer("Упс! Попробуй обычный поиск!", 
+                             reply_markup=build_reply_keyboard(build_main_keyboard(), adjust=[2,2]))
+        return
+
+    forms_data = [{"id": f.user_id, "dist": None} for f in incoming_forms]
+    
+    await state.set_state(SearchState.viewing)
+    await state.update_data(forms=forms_data, current_index=0, seen_ids=[])
+    
+    await message.answer("Давай посмотрим, кому ты нравишься!")
+    
+    await show_next_form(message, state)
+
+@router.message(F.text == LikeButtons.SNOOZE_FORM.value)
+async def snooze_form_handler(message: Message, state: FSMContext):
+    await message.answer("Хорошо, загляни позже! Анкета будет ждать тебя в симпатиях.", 
+                         reply_markup=build_reply_keyboard(build_main_keyboard(), adjust=[2,2]))
+    await state.clear()
 
 @router.message(SearchState.viewing, F.text == BotButtons.SKIP.value)
 async def search_handler(message: Message, state: FSMContext):
@@ -50,7 +120,7 @@ async def show_next_form(message: Message, state: FSMContext):
 
     last_view_time = data.get("last_view_time")
     current_time = time.time()
-    two_hours_in_seconds = 2
+    two_hours_in_seconds = 7200
 
     if last_view_time and (current_time - last_view_time > two_hours_in_seconds):
         await state.update_data(seen_ids=[], last_view_time=current_time)
@@ -67,7 +137,7 @@ async def show_next_form(message: Message, state: FSMContext):
         if not my_form: return
 
         gender_search = my_form.search_settings.gender_search
-        target = gender_search if gender_search != InlineButtons.NO_GENDER_SEARCH.text else None
+        target = gender_search if gender_search != InlineButtons.NO_GENDER_SEARCH.text_data else None
 
         lat, lon = (my_form.latitude, my_form.longitude) if my_form.search_settings.geo_search else (None, None)
 
@@ -77,8 +147,8 @@ async def show_next_form(message: Message, state: FSMContext):
         target_gender=target, lat=lat, lon=lon, exclude_ids=seen_ids)
 
         if not new_forms:
-            await message.answer("Пока это все птички в округе!\n\nЗалетай позже", reply_markup=build_reply_keyboard([{"text": BotButtons.BACK.value}]))
-            await back_button_search_handler(message, state)
+            await message.answer("Пока это все в округе!\n\nПриходи позже", reply_markup=build_reply_keyboard([{"text": BotButtons.BACK.value}]))
+            # await back_button_search_handler(message, state)
             return
         
         forms = [{"id": f.user_id, "dist": f.distance_km} for f in new_forms]
@@ -160,16 +230,14 @@ async def gender_settings_callback(callback: CallbackQuery, state: FSMContext):
 async def gender_search_callback(callback: CallbackQuery, state: FSMContext):
     text = InlineButtons.NO_GENDER_SEARCH.text
 
-    for btn in [InlineButtons.FEMALE_GENDER, InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER]:
+    for btn in [InlineButtons.FEMALE_GENDER, InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER, InlineButtons.NO_GENDER_SEARCH]:
         if btn.callback_data == callback.data:
             text = btn.text
+            text_data = btn.text_data
 
     await callback.answer(f"Поиск: {text}")
 
-    keyboard = [{"text": btn.text, "callback_data" : btn.callback_data} for btn in (InlineButtons.FEMALE_GENDER, 
-    InlineButtons.MALE_GENDER, InlineButtons.ANOTHER_GENDER, InlineButtons.NO_GENDER_SEARCH, InlineButtons.BACK)]
-
-    await state.update_data(gender_search=text)
+    await state.update_data(gender_search=text_data)
     await show_edit_keyboard(callback, state)
     
 @router.callback_query(SearchState.settings, F.data == InlineButtons.LOCATION_SEARCH.callback_data)
@@ -188,7 +256,7 @@ async def show_edit_keyboard(callback: CallbackQuery, state: FSMContext):
     geo_search = data.get("geo_search")
 
     await callback.message.edit_text("Что ты хочешь настроить?\n\n"\
-    f"Гендер: {gender_search}\nПоиск по городу: {'Вкл.' if geo_search == True else 'Выкл.'}", reply_markup=build_inline_keyboard(
+    f"Текущие настройки:\nГендер: {gender_search}\nПоиск по городу: {'Вкл.' if geo_search == True else 'Выкл.'}", reply_markup=build_inline_keyboard(
         [{"text" : InlineButtons.GENDER_SEARCH.text, "callback_data" : InlineButtons.GENDER_SEARCH.callback_data},
          {"text": InlineButtons.LOCATION_SEARCH.text, "callback_data" : InlineButtons.LOCATION_SEARCH.callback_data},
          {"text": InlineButtons.DONE.text, "callback_data": InlineButtons.DONE.callback_data}], adjust=[1,1,1]
