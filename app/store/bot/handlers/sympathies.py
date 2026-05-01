@@ -6,7 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InputMediaPhoto, Message
 from aiogram.fsm.context import FSMContext
 
-from app.store.bot.builders import BotButtons, SympathyButtons, build_form_text, build_main_keyboard, build_reply_keyboard, send_form_message, send_got_sympathy_message, send_match_message, send_search_form_message
+from app.store.bot.builders import BotButtons, MatchesButtons, SympathyButtons, build_form_text, build_main_keyboard, build_reply_keyboard, send_form_message, send_got_sympathy_message, send_match_message, send_search_form_message
 from app.forms.accessor import formAccessor
 from app.user.accessor import userAccessor
 
@@ -133,6 +133,42 @@ async def next_sympathy(message: Message, state: FSMContext):
 
     await send_got_sympathy_message(message=message, form=target_form)
 
+@router.message(SympathyState.see_matches, F.text.in_([MatchesButtons.NEXT.value, MatchesButtons.BACK.value]))
+async def handle_matches(message: Message, state: FSMContext):
+    data = await state.get_data()
+    forms = data.get("forms", [])
+    index = data.get("current_index", 0)
+
+    if message.text == MatchesButtons.BACK.value:
+        await state.clear()
+        await handle_sympathies(message, state)
+        return
+
+    await state.update_data(current_index=index + 1)
+    
+    await next_match(message, state)
+
+@router.message(SympathyState.see_matches)
+async def next_match(message: Message, state: FSMContext):
+    data = await state.get_data()
+    forms = data.get("forms", [])
+    index = data.get("current_index", 0)
+
+    if index >= len(forms):
+        await message.answer("Это все взаимные симпатии!", reply_markup=build_reply_keyboard(
+        [{"text": SympathyButtons.GOT_SYMPATHIES.value}, {"text": SympathyButtons.SEE_MATCHES.value}, {"text": SympathyButtons.BACK.value}],
+        adjust=[2, 2]
+        ))
+        await state.clear()
+        await handle_sympathies(message, state)
+        return
+    
+    current_item = forms[index]
+    target_form = await formAccessor.get_form_by_user_id(current_item["id"])
+    target_user = await userAccessor.get_user(user_id=target_form.user_id)
+
+    await send_match_message(message, target_form, target_user.username)
+
 
 @router.message(SympathyState.choose_button_sympathy, F.text == SympathyButtons.SEE_MATCHES.value)
 async def handle_see_matches(message: Message, state: FSMContext):
@@ -144,14 +180,19 @@ async def handle_see_matches(message: Message, state: FSMContext):
         await message.answer("У тебя нет взаимных симпатий")
         return
 
-    for match in matches:
-        target_form = match if match.user_id != message.from_user.id else None
-        target_user = await userAccessor.get_user(user_id=target_form.user_id)
-        if target_form is not None:
-            await send_match_message(message, target_form, target_user.username)
+    # for match in matches:
+    #     target_form = match if match.user_id != message.from_user.id else None
+    #     target_user = await userAccessor.get_user(user_id=target_form.user_id)
+    #     if target_form is not None:
+    #         await send_match_message(message, target_form, target_user.username)
 
-    await state.set_state(SympathyState.choose_button_sympathy)
-    await handle_sympathies(message, state)
+    matches_list = [{"id": f.user_id, "dist": None} for f in matches]
+    await state.update_data(forms=matches_list, current_index=0)
+
+    await next_match(message, state)
+
+    # await state.set_state(SympathyState.choose_button_sympathy)
+    # await handle_sympathies(message, state)
 
 @router.message(SympathyState.choose_button_sympathy, F.text == SympathyButtons.BACK.value)
 async def handle_back(message: Message, state: FSMContext):

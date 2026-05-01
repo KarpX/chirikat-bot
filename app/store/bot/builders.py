@@ -29,6 +29,10 @@ class SympathyButtons(Enum):
     SEE_MATCHES = "Взаимности"
     BACK = "Назад"
 
+class MatchesButtons(Enum):
+    NEXT = "Дальше"
+    BACK = "Назад"
+
 class InlineButtons(Enum):
     BACK = {"text" : "Назад", "callback_data": "cb_back"}
     DONE = {"text" : "Применить", "callback_data": "cb_done"}
@@ -191,6 +195,7 @@ async def send_match_message(message, form, username):
         else:
             media.append(InputMediaPhoto(media=img.file_id))
     
+    await message.answer("У тебя взаимность:", reply_markup=build_reply_keyboard([{"text": MatchesButtons.NEXT.value}, {"text": MatchesButtons.BACK.value}], adjust=[2]))
     await message.answer_media_group(media=media[:3])
 
 async def send_got_sympathy_message(message, form):
