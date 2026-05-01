@@ -158,7 +158,7 @@ async def form_handler(message, state: FSMContext):
         keyboard += build_edit_keyboard()
         kb = build_reply_keyboard(keyboard)
 
-    await message.answer("Покажи себя! \n\n<i>Внешний может много о тебе рассказать</i>", reply_markup=kb, parse_mode="HTML")
+    await message.answer("Покажи себя! \n\n<i>Внешний вид может много о тебе рассказать</i>", reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(FormState.image, F.photo)

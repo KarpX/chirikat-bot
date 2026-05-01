@@ -89,7 +89,7 @@ async def see_form_handler(message: Message, state: FSMContext):
     await state.set_state(SearchState.viewing)
     await state.update_data(forms=forms_data, current_index=0, seen_ids=[])
     
-    await message.answer("Давай посмотрим, кому ты нравишься! ✨")
+    await message.answer("Давай посмотрим, кому ты нравишься!")
     
     await show_next_form(message, state)
 
@@ -120,7 +120,7 @@ async def show_next_form(message: Message, state: FSMContext):
 
     last_view_time = data.get("last_view_time")
     current_time = time.time()
-    two_hours_in_seconds = 2
+    two_hours_in_seconds = 7200
 
     if last_view_time and (current_time - last_view_time > two_hours_in_seconds):
         await state.update_data(seen_ids=[], last_view_time=current_time)

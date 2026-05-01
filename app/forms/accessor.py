@@ -1,3 +1,5 @@
+from http.client import HTTPException
+
 from sqlalchemy import delete, func, literal, not_, select
 from sqlalchemy.orm import selectinload
 
@@ -167,6 +169,24 @@ class FormAccessor:
             
             result = await session.execute(query)
             return result.scalars().all()
+        
+    async def delete_like(self, from_form_id: int, to_form_id: int):
+        async with self._session as session:
+            result = await session.execute(
+                select(FormLikeModel)
+                .where(
+                    FormLikeModel.like_from == from_form_id,
+                    FormLikeModel.liked_form_id == to_form_id
+                )
+            )
+            like = result.scalar_one_or_none()
+
+            if not like:
+                return False
+            
+            await session.delete(like)
+            await session.commit()
+            return True
     
     async def get_matches(self, user_id: int):
         async with self._session as session:

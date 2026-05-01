@@ -133,7 +133,7 @@ def build_form_text(form):
         else:
             dist_str = f"\n📍 В {form.distance_km} км от тебя"
 
-    return f"<b>{name}</b> – {gender} {age} {city}{dist_str}\n\n{description}"
+    return f"<b>{name}</b> – {gender} {age}{city}{dist_str}\n\n{description}"
 
 async def send_form_message(message, form, username: str = None):
     if not form.images:
